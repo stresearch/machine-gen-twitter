@@ -113,3 +113,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# files
+*.csv
+*.jsonl
+*.json
+lightning_logs/*
+*.pt
+*.txt
+*.html
+*.03
