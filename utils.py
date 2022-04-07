@@ -35,7 +35,13 @@ def boring_tweet(tweet, min_non_boring_words = 5):
 
 def create_dataset(file_name, to_drop_mentions = True):
     # assume ends iwth jsonl
-    data = pd.read_json(file_name,lines = True).fillna("")
+    if file_name.endswith(".jsonl"):
+        data = pd.read_json(file_name,lines = True).fillna("")
+        file_name = file_name.replace(".jsonl","")
+    elif file_name.endswith(".csv"):
+        data = pd.read_csv(file_name).fillna("")
+        file_name = file_name.replace(".csv","")
+
     text = data.text.str.replace("RT ","").drop_duplicates()
     text = text.apply(clean_tweet)
 
@@ -62,4 +68,4 @@ def create_dataset(file_name, to_drop_mentions = True):
  
 
 if __name__ == "__main__":
-    create_dataset("climate.jsonl")
+    create_dataset("graphika.csv")
