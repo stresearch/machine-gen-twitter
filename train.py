@@ -19,21 +19,19 @@ import tqdm
 from transformers.optimization import get_linear_schedule_with_warmup
 from pandas.errors import ParserError
 
+
 def compute_metrics(preds, labels, loss):
     T = labels.shape[1]
     return dict(perplexity=np.exp(loss / T))
 
 
 class FineTuned(pl.LightningModule):
-    def __init__(
-        self,
-        lm_name="gpt2-medium",
-        lr=5e-5,
-        weight_decay=0.0,
-    ):
+    def __init__(self, lm_name="gpt2-medium", lr=5e-5, weight_decay=0.0, **kwargs):
         super().__init__()
         self.save_hyperparameters()
         self.lm = AutoModelForCausalLM.from_pretrained(lm_name)
+        if len(kwargs) == 0:
+            print(f"unknown params {kwargs}")
 
     def forward(self, **inputs):
         return self.lm(**inputs)
@@ -65,7 +63,7 @@ class FineTuned(pl.LightningModule):
         return optimizer
 
 
-def get_data(model_name, split, dataset, field = "text"):
+def get_data(model_name, split, dataset, field="text"):
 
     file_name = f"{dataset}_{split}_{model_name}.pt"
 
@@ -79,13 +77,11 @@ def get_data(model_name, split, dataset, field = "text"):
             data_test = pd.read_csv(f"{dataset}_{split}.csv")
         except ParserError:
             print("using python engine")
-            data_test = pd.read_csv(f"{dataset}_{split}.csv",engine="python")
+            data_test = pd.read_csv(f"{dataset}_{split}.csv", engine="python")
 
         texts = data_test.iloc[:, 0] if field is None else data_test.loc[:, field]
         texts = (
-            tokenizer.eos_token
-            + tokenizer.eos_token.join(texts)
-            + tokenizer.eos_token
+            tokenizer.eos_token + tokenizer.eos_token.join(texts) + tokenizer.eos_token
         )
         dataset = tokenizer(
             texts,
@@ -107,13 +103,15 @@ def generate(model, args, N):
     tokenizer = AutoTokenizer.from_pretrained(args.lm_name)
     tokenizer.pad_token = tokenizer.eos_token
 
-    B = 10*5
+    B = 10 * 5
     with torch.no_grad():
-        prompt = tokenizer(tokenizer.eos_token, return_tensors="pt")["input_ids"].to(
-            model.device
-        ).expand(B,-1)
+        prompt = (
+            tokenizer(tokenizer.eos_token, return_tensors="pt")["input_ids"]
+            .to(model.device)
+            .expand(B, -1)
+        )
 
-        for i in tqdm.trange(N//B):
+        for i in tqdm.trange(N // B):
             out = model.lm.generate(
                 prompt,
                 do_sample=True,
@@ -126,8 +124,9 @@ def generate(model, args, N):
             )
 
             # texts.append(tokenizer.decode(out[0].cpu(), skip_special_tokens=True))
-            texts.extend([tokenizer.decode(o.cpu(), skip_special_tokens=True) for o in out])
-
+            texts.extend(
+                [tokenizer.decode(o.cpu(), skip_special_tokens=True) for o in out]
+            )
 
     file_name = f"{args.dataset}_{args.lm_name}_mg.csv"
 
@@ -156,10 +155,12 @@ def save_hg_model(source_checkpoint, destination_directory):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lm_name", default="gpt2-medium")
+    parser.add_argument("--lm_name", default="gpt2")
     parser.add_argument("--dataset", default="avax")
     parser.add_argument("--mode", default="train,generate")
-    parser.add_argument("--gpu", type=int, default=4)
+    parser.add_argument("--gpu", type=int, default=5)
+    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--model_batch_size", type=int, default=8)
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -170,19 +171,27 @@ def main():
 
         # pl.seed_everything(11)
 
-        model = FineTuned(lm_name=args.lm_name)
+        model = FineTuned(lm_name=args.lm_name, dataset=args.dataset)
 
         train_data = get_data(args.lm_name, "train", args.dataset)
         test_data = get_data(args.lm_name, "test", args.dataset)
 
         # return
+        if args.model_batch_size < args.batch_size:
+            accumulate_grad_batches = args.batch_size // args.model_batch_size
+            print("accumulate_grad_batches: ", accumulate_grad_batches)
+        else:
+            accumulate_grad_batches = None
 
         train_dataloader = torch.utils.data.DataLoader(
-            train_data, shuffle=True, batch_size=8, pin_memory=True
+            train_data, shuffle=True, batch_size=args.model_batch_size, pin_memory=True
         )
 
         test_dataloader = torch.utils.data.DataLoader(
-            test_data, shuffle=False, batch_size=8*2, pin_memory=True
+            test_data,
+            shuffle=False,
+            batch_size=args.model_batch_size * 4,
+            pin_memory=True,
         )
 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
@@ -197,7 +206,7 @@ def main():
             max_epochs=10,
             # limit_train_batches = .1,
             # limit_val_batches = .1,
-            accumulate_grad_batches=8,
+            accumulate_grad_batches=accumulate_grad_batches,
             callbacks=[
                 # pl.callbacks.EarlyStopping(monitor="val_loss"),
                 checkpoint_callback,
@@ -216,8 +225,6 @@ def main():
         generate(model, args, 1000)
 
     ## save some generations
-
-
 
 
 if __name__ == "__main__":
