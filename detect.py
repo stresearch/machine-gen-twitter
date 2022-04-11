@@ -75,7 +75,7 @@ def get_detector(device):
 
 
 
-def main(device = "cuda:4"):
+def main(device = "cuda:6"):
     
 
     model,tokenizer = get_detector(device)
@@ -83,26 +83,28 @@ def main(device = "cuda:4"):
 
     datasets = ["avax","climate","graphika"]
     expand = [1, 5, 10, 20]
+    models = ["gpt2-medium","gpt2"]
 
     outs = []
-
     for d in datasets:
         for n in expand:
             print(d,n)
             data_real = load_dataset(f"{d}_test.csv",n)
             data_real["label"] = 1
-            
-            data_gen = load_dataset(f"{d}_gpt2-medium_mg.csv",n)
-            data_gen["label"] = 0
-
             acc_real,scores_real = detect(model, tokenizer, data_real.clean_text.tolist(), data_real.label.values, device)
-            acc_gen,scores_gen = detect(model, tokenizer, data_gen.clean_text.tolist(), data_gen.label.values, device)
+            outs.append(dict(acc = acc_real, dataset = d, num_tweets = n, model = "human"))
 
-            outs.append(dict(acc_real = acc_real, acc_gen = acc_gen, dataset = d, num_tweets = n))
+
+            for model_name in models:
+            
+                data_gen = load_dataset(f"{d}_{model_name}_mg.csv",n)
+                data_gen["label"] = 0
+                acc_gen,scores_gen = detect(model, tokenizer, data_gen.clean_text.tolist(), data_gen.label.values, device)
+                outs.append(dict(acc_gen = acc_gen, dataset = d, num_tweets = n, model = model_name))
 
 
     outs = pd.DataFrame(outs)
-    outs.to_csv("detection_results.csv")
+    outs.to_csv("detection_results_v2.csv")
 
 if __name__=="__main__":
     main()
