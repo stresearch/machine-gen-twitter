@@ -157,10 +157,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lm_name", default="gpt2")
     parser.add_argument("--dataset", default="avax")
-    parser.add_argument("--mode", default="train,generate")
-    parser.add_argument("--gpu", type=int, default=5)
+    parser.add_argument("--mode", default="generate")
+    parser.add_argument("--gpu", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=64)
     parser.add_argument("--model_batch_size", type=int, default=8)
+    parser.add_argument("--ckpt",type=str,default=None)
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -219,6 +220,7 @@ def main():
 
     if "generate" in mode:
         # path = "lightning_logs/version_4/checkpoints/epoch=3-step=431.ckpt"
+        path = "lightning_logs/version_10/checkpoints/epoch=9-step=7739.ckpt"
         model = FineTuned.load_from_checkpoint(path)
         model.to(f"cuda:{args.gpu}")
 
