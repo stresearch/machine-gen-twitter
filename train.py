@@ -18,6 +18,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import tqdm
 from transformers.optimization import get_linear_schedule_with_warmup
 from pandas.errors import ParserError
+from deepspeed.ops.adam import FusedAdam
+from pytorch_lightning.utilities.deepspeed import convert_zero_checkpoint_to_fp32_state_dict
+
 
 
 def compute_metrics(preds, labels, loss):
@@ -55,7 +58,9 @@ class FineTuned(pl.LightningModule):
             self.log(f"val_{k}", v)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
+        optim_class = FusedAdam #torch.optim.AdamW
+
+        optimizer = optim_class(
             self.parameters(),
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
@@ -65,12 +70,12 @@ class FineTuned(pl.LightningModule):
 
 def get_data(model_name, split, dataset, field="text"):
 
-    file_name = f"{dataset}_{split}_{model_name}.pt"
+    file_name = f"{dataset}_{split}_{model_name.replace('/','-')}.pt"
 
     if os.path.exists(file_name):
         dataset = torch.load(file_name)
     else:
-
+        print("processing data", f"{dataset}_{split}.csv")
         tokenizer = AutoTokenizer.from_pretrained(model_name)
         tokenizer.pad_token = tokenizer.eos_token
         try:
@@ -103,7 +108,10 @@ def generate(model, args, N):
     tokenizer = AutoTokenizer.from_pretrained(args.lm_name)
     tokenizer.pad_token = tokenizer.eos_token
 
+    assert not model.lm.training 
+
     B = 10 * 5
+    # B = 10
     with torch.no_grad():
         prompt = (
             tokenizer(tokenizer.eos_token, return_tensors="pt")["input_ids"]
@@ -128,7 +136,7 @@ def generate(model, args, N):
                 [tokenizer.decode(o.cpu(), skip_special_tokens=True) for o in out]
             )
 
-    file_name = f"{args.dataset}_{args.lm_name}_mg.csv"
+    file_name = f"{args.dataset}_{args.lm_name.replace('/','-')}_mg_{N}.csv"
 
     pd.DataFrame(dict(text=texts)).to_csv(file_name, index=False)
 
@@ -155,13 +163,13 @@ def save_hg_model(source_checkpoint, destination_directory):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lm_name", default="gpt2")
+    parser.add_argument("--lm_name", default="EleutherAI/gpt-neo-1.3B")
     parser.add_argument("--dataset", default="avax")
-    parser.add_argument("--mode", default="generate")
-    parser.add_argument("--gpu", type=int, default=6)
-    parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--model_batch_size", type=int, default=8)
-    parser.add_argument("--ckpt",type=str,default=None)
+    parser.add_argument("--mode", default="train")
+    parser.add_argument("--gpu", type=int, default=0)
+    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--model_batch_size", type=int, default=16)
+    parser.add_argument("--num_samples",type=int,default=1000 )
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -172,10 +180,15 @@ def main():
 
         # pl.seed_everything(11)
 
-        model = FineTuned(lm_name=args.lm_name, dataset=args.dataset)
 
         train_data = get_data(args.lm_name, "train", args.dataset)
         test_data = get_data(args.lm_name, "test", args.dataset)
+
+        if "prep_data_only" in mode:
+            return
+
+        model = FineTuned(lm_name=args.lm_name, dataset=args.dataset)
+
 
         # return
         if args.model_batch_size < args.batch_size:
@@ -201,10 +214,11 @@ def main():
         # gpu = 3
 
         trainer = pl.Trainer(
-            gpus=[args.gpu],  # comment this line for multi-gpu
+            gpus=8,  # comment this line for multi-gpu
+            strategy="deepspeed_stage_2",
             precision=16,
             min_epochs=1,
-            max_epochs=10,
+            max_epochs=5,
             # limit_train_batches = .1,
             # limit_val_batches = .1,
             accumulate_grad_batches=accumulate_grad_batches,
@@ -220,13 +234,56 @@ def main():
 
     if "generate" in mode:
         # path = "lightning_logs/version_4/checkpoints/epoch=3-step=431.ckpt"
-        path = "lightning_logs/version_10/checkpoints/epoch=9-step=7739.ckpt"
-        model = FineTuned.load_from_checkpoint(path)
+        # path = "lightning_logs/version_8/checkpoints/epoch=2-step=993.ckpt/lightning_model.pt"
+        # path = "lightning_logs/version_9/checkpoints/epoch=1-step=1322.ckpt/lightning_model.pt"
+        # if os.path.isdir(path):
+
+        #     # lightning deepspeed has saved a directory instead of a file
+        #     output_path = os.path.join(path,"lightning_model.pt")
+        #     convert_zero_checkpoint_to_fp32_state_dict(path, output_path)
+        #     path = output_path
+
+        path = find_checkpoint(args)
+        # print(path)
+        # return
+
+        model = FineTuned.load_from_checkpoint(path, strict=False)
+        model.lm.tie_weights()
         model.to(f"cuda:{args.gpu}")
 
         generate(model, args, 1000)
 
     ## save some generations
+
+def find_checkpoint(args, search_path = "lightning_logs"):
+    for p in glob.glob(os.path.join(search_path,"*")):
+        ckpt_path = get_checkpoint(p,args)
+        if ckpt_path is not None:
+            return ckpt_path
+
+
+def get_checkpoint(model_dir,args):
+    import yaml
+    yaml_file = os.path.join(model_dir, "hparams.yaml")
+    params = yaml.unsafe_load(open(yaml_file))
+    if params["dataset"] == args.dataset and params["lm_name"] == args.lm_name:
+        #check for combined model first
+        ckpt_path = glob.glob(os.path.join(model_dir,"checkpoints","*","lightning_model.pt"))
+        if len(ckpt_path) > 0:
+            print("combined checkpoint found", ckpt_path[0])
+            return ckpt_path[0]
+
+        ckpt_path = glob.glob(os.path.join(model_dir,"checkpoints","*.ckpt"))
+        if len(ckpt_path) > 0:
+            print("distr checkpoint found.. combining", ckpt_path[0])
+            path = ckpt_path[0]
+            output_path = os.path.join(path,"lightning_model.pt")
+            convert_zero_checkpoint_to_fp32_state_dict(path, output_path)
+            return output_path
+
+
+
+
 
 
 if __name__ == "__main__":
