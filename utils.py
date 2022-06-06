@@ -2,8 +2,58 @@
 import pandas as pd
 import re
 import numpy as np
+import tweepy
+import time
+import tqdm.auto as tqdm
+
+
+CONSUMER_KEY=""
+CONSUMER_SECRET=""
+ACCESS_TOKEN=""
+ACCESS_TOKEN_SECRET=""
+
+def rehydrate(file_name=None):
+    ids =pd.read_csv(file_name)["id"].astype(str).values
+
+    client = tweepy.Client(
+        consumer_key=CONSUMER_KEY,
+        consumer_secret=CONSUMER_SECRET,
+        access_token=ACCESS_TOKEN,
+        access_token_secret=ACCESS_TOKEN_SECRET
+    )
+    
+    
+    batch_size = 100
+    max_per_interval = 890
+    max_time_per_interval_seconds = 16*60
+    data = []
+    num_requests = 0
+    start_time = time.time()
+    
+    for i in tqdm.trange(0,len(ids),batch_size):
+        
+        
+        
+        if num_requests == max_per_interval:
+            elapsed_time = time.time() - start_time
+            sleep_time = max_time_per_interval_seconds - elapsed_time
+            if sleep_time>0:
+                print(f"sleeping for {elapsed_time}")
+                time.sleep(sleep_time)
+            start_time = time.time()
+            num_requests = 0
+        
+        
+        batch_ids = ",".join(ids[i:i+batch_size])
+        out = client.get_tweets(batch_ids, expansions="author_id", user_auth=True)
+        data.extend([dict(o) for o in out.data])
+        num_requests += 1
+        
+    pd.DataFrame(data).to_json(f"{file_name}.jsonl",orient="records",lines=True)
+
 
 def clean_tweet(tweet, allow_new_lines = False):
+    #courtesy of huggingtweet
     tweet = tweet.replace('&amp;', '&')
     tweet = tweet.replace('&lt;', '<')
     tweet = tweet.replace('&gt;', '>')
@@ -68,4 +118,7 @@ def create_dataset(file_name, to_drop_mentions = True):
  
 
 if __name__ == "__main__":
-    create_dataset("graphika.csv")
+
+    # usage examples
+    rehydrate("datasetname_ids.csv")
+    create_dataset("datasetname_ids.jsonl")

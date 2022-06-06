@@ -140,13 +140,15 @@ def generate(model, args, N):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lm_name", default="EleutherAI/gpt-neo-2.7B")
-    parser.add_argument("--dataset", default="avax")
-    parser.add_argument("--mode", default="train")
-    parser.add_argument("--gpu", type=int, default=0)
-    parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--model_batch_size", type=int, default=2)
-    parser.add_argument("--num_samples",type=int,default=1000 )
+    parser.add_argument("--lm_name", default="EleutherAI/gpt-neo-2.7B", help = "huggingface model name")
+    parser.add_argument("--dataset", default="avax",help = "dataset name")
+    parser.add_argument("--mode", default="train", help = "mode = train,generate")
+    parser.add_argument("--gpu", type=int, default=0, help = "gpus to use")
+    parser.add_argument("--batch_size", type=int, default=8, help = "batch per gpu")
+    parser.add_argument("--model_batch_size", type=int, default=2, help = "desired total batch size")
+    parser.add_argument("--num_samples",type=int,default=1000, help = "number of samples to generate" )
+    parser.add_argument("--strategy", default=None, type = str, help = "model parallelization strategy, use deepspeed_2 or 3 for large models to shard")
+    parser.add_argument("--max_epochs", default=5, type = int, help = "max epochs")
 
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -191,11 +193,11 @@ def main():
         # gpu = 3
 
         trainer = pl.Trainer(
-            gpus=8,  # comment this line for multi-gpu
-            strategy="deepspeed_stage_3",
+            gpus=args.gpu,  
+            strategy=args.strategy, # deepspeed_stage_2 or 3 for large models
             precision=16,
             min_epochs=1,
-            max_epochs=5,
+            max_epochs=args.max_epochs,
             # limit_train_batches = .1,
             # limit_val_batches = .1,
             accumulate_grad_batches=accumulate_grad_batches,
