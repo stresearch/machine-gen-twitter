@@ -251,7 +251,7 @@ def main():
         model.lm.tie_weights()
         model.to(f"cuda:{args.gpu}")
 
-        generate(model, args, 1000)
+        generate(model, args, args.num_samples)
 
     ## save some generations
 
@@ -266,7 +266,14 @@ def get_checkpoint(model_dir,args):
     import yaml
     yaml_file = os.path.join(model_dir, "hparams.yaml")
     params = yaml.unsafe_load(open(yaml_file))
-    if params["dataset"] == args.dataset and params["lm_name"] == args.lm_name:
+    if params.get("dataset", None) == args.dataset and params["lm_name"] == args.lm_name:
+        #check for regular checkpoint first
+        ckpt_path = glob.glob(os.path.join(model_dir,"checkpoints","*.ckpt"))
+        if len(ckpt_path)>0 and not os.path.isdir(ckpt_path[0]):
+            print("found regular checkpoint")
+            return ckpt_path[0]
+
+
         #check for combined model first
         ckpt_path = glob.glob(os.path.join(model_dir,"checkpoints","*","lightning_model.pt"))
         if len(ckpt_path) > 0:

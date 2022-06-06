@@ -1,8 +1,11 @@
+from attr import dataclass
 import regex
 import torch
 import numpy as np
 import pandas as pd
 import tqdm
+import glob
+import os
 
 def detect(model, tokenizer, texts, labels, device):
 
@@ -73,9 +76,41 @@ def get_detector(device):
 
     return model, tokenizer
 
+def eval_hk(input_dir ="/proj/semafor/hackathons/hk3/cp4/v1/task1_fixed/" ,
+           result_dir = "/proj/semafor/hackathons/hk3/results/cp4/cp4_task1_openai-baseline", summary_file = None, device = "cuda:3"):
+    model,tokenizer = get_detector(device)
+    
+    files = glob.glob(os.path.join(input_dir,"test*.json"))[::-1]
+    sep = ". "
 
+    print("total files ", len(files))
 
-def main(device = "cuda:6"):
+    outs = []
+
+    for file in files:
+        
+        data = pd.read_json(file,orient="records")["tweets"].apply(lambda a: sep.join(a)).str.replace("...","",regex=False).fillna("")
+
+        if "human" in file:
+            labels = np.ones(len(data))
+        else:
+            labels = np.zeros(len(data))
+
+        acc, scores_gen = detect(model, tokenizer, data.tolist(), labels, device)
+        head, tail = os.path.split(file)
+
+        outs.append(dict(file_name = tail, acc = acc))
+
+        print("testing ",file)
+        print("acc", acc)
+
+        scores_gen = pd.DataFrame(scores_gen, columns = ["llr"])
+        scores_gen.to_csv(os.path.join(result_dir,tail.replace(".json",".csv")),index=False)
+    
+    outs = pd.DataFrame(outs)
+    outs.to_csv(summary_file)
+
+def main(device = "cuda:4"):
     
 
     model,tokenizer = get_detector(device)
@@ -83,7 +118,8 @@ def main(device = "cuda:6"):
 
     datasets = ["avax","climate","graphika"]
     expand = [1, 5, 10, 20]
-    models = ["gpt2-medium","gpt2"]
+    #/proj/semafor/kirill/experiments/semafor/twitter_nlg/avax_EleutherAI-gpt-neo-1.3B_mg.csv
+    models = ["gpt2-medium","gpt2","gpt2-large", "EleutherAI-gpt-neo-1.3B"]
 
     outs = []
     for d in datasets:
@@ -100,14 +136,21 @@ def main(device = "cuda:6"):
                 data_gen = load_dataset(f"{d}_{model_name}_mg.csv",n)
                 data_gen["label"] = 0
                 acc_gen,scores_gen = detect(model, tokenizer, data_gen.clean_text.tolist(), data_gen.label.values, device)
-                outs.append(dict(acc_gen = acc_gen, dataset = d, num_tweets = n, model = model_name))
+                outs.append(dict(acc = acc_gen, dataset = d, num_tweets = n, model = model_name))
 
 
     outs = pd.DataFrame(outs)
     outs.to_csv("detection_results_v2.csv")
 
 if __name__=="__main__":
-    main()
+
+    eval_hk(input_dir ="/proj/semafor/hackathons/hk3/cp4/v1/task1_fixed/", 
+            result_dir="/proj/semafor/hackathons/hk3/results/cp4/cp4_task1_openai-baseline",
+            summary_file = "detection_results_hk_task1.csv")
+
+    eval_hk(input_dir ="/proj/semafor/hackathons/hk3/cp4/v1/task2_fixed/",
+            result_dir   = "/proj/semafor/hackathons/hk3/results/cp4/cp4_task2_openai-baseline",
+            summary_file = "detection_results_hk_task2.csv")
 
 
 
