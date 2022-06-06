@@ -4,8 +4,6 @@ import logging
 from collections import defaultdict
 import os
 
-# os.environ["PYTORCH_TRANSFORMERS_CACHE"] = "/proj/sonar/huggingface"
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import time
 from argparse import Namespace
 import pandas as pd
@@ -140,27 +138,6 @@ def generate(model, args, N):
 
     pd.DataFrame(dict(text=texts)).to_csv(file_name, index=False)
 
-
-def save_hg_model(source_checkpoint, destination_directory):
-
-    # model_path = "/proj/semafor/kirill/covid/tune-gpt2-covid/722b7d4c1d8540319160c34cbca3860f/checkpoints/epoch=1-step=22475.ckpt"
-    model_train = FineTuned.load_from_checkpoint(source_checkpoint)
-    model = model_train.lm
-    tokenizer = AutoTokenizer.from_pretrained(model_train.hparams.lm_name)
-    model.config.task_specific_params = {}
-    model.config.task_specific_params["text-generation"] = {
-        "do_sample": True,
-        "max_length": 128,
-        "early_stopping": True,
-        "top_p": 0.9,
-    }
-
-    # hg_model_name = "/proj/semafor/kirill/covid/gpt2-medium-covid"
-    os.makedirs(destination_directory, exist_ok=True)
-    model.save_pretrained(destination_directory)
-    tokenizer.save_pretrained(destination_directory)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lm_name", default="EleutherAI/gpt-neo-2.7B")
@@ -233,19 +210,7 @@ def main():
         path = checkpoint_callback.best_model_path
 
     if "generate" in mode:
-        # path = "lightning_logs/version_4/checkpoints/epoch=3-step=431.ckpt"
-        # path = "lightning_logs/version_8/checkpoints/epoch=2-step=993.ckpt/lightning_model.pt"
-        # path = "lightning_logs/version_9/checkpoints/epoch=1-step=1322.ckpt/lightning_model.pt"
-        # if os.path.isdir(path):
-
-        #     # lightning deepspeed has saved a directory instead of a file
-        #     output_path = os.path.join(path,"lightning_model.pt")
-        #     convert_zero_checkpoint_to_fp32_state_dict(path, output_path)
-        #     path = output_path
-
         path = find_checkpoint(args)
-        # print(path)
-        # return
 
         model = FineTuned.load_from_checkpoint(path, strict=False)
         model.lm.tie_weights()

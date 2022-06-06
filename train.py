@@ -233,15 +233,6 @@ def main():
         path = checkpoint_callback.best_model_path
 
     if "generate" in mode:
-        # path = "lightning_logs/version_4/checkpoints/epoch=3-step=431.ckpt"
-        # path = "lightning_logs/version_8/checkpoints/epoch=2-step=993.ckpt/lightning_model.pt"
-        # path = "lightning_logs/version_9/checkpoints/epoch=1-step=1322.ckpt/lightning_model.pt"
-        # if os.path.isdir(path):
-
-        #     # lightning deepspeed has saved a directory instead of a file
-        #     output_path = os.path.join(path,"lightning_model.pt")
-        #     convert_zero_checkpoint_to_fp32_state_dict(path, output_path)
-        #     path = output_path
 
         path = find_checkpoint(args)
         # print(path)
