@@ -139,18 +139,18 @@ def generate(model, args, N):
     pd.DataFrame(dict(text=texts)).to_csv(file_name, index=False)
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--lm_name", default="EleutherAI/gpt-neo-2.7B", help = "huggingface model name")
     parser.add_argument("--dataset", default="avax",help = "dataset name")
     parser.add_argument("--mode", default="train", help = "mode = train,generate")
     parser.add_argument("--gpu", type=int, default=0, help = "gpus to use")
-    parser.add_argument("--batch_size", type=int, default=8, help = "batch per gpu")
-    parser.add_argument("--model_batch_size", type=int, default=2, help = "desired total batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help = "desired total batch size")
+    parser.add_argument("--model_batch_size", type=int, default=2, help = "batch that fits on gpu")
     parser.add_argument("--num_samples",type=int,default=1000, help = "number of samples to generate" )
     parser.add_argument("--strategy", default=None, type = str, help = "model parallelization strategy, use deepspeed_2 or 3 for large models to shard")
     parser.add_argument("--max_epochs", default=5, type = int, help = "max epochs")
 
-    parser = pl.Trainer.add_argparse_args(parser)
+    # parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
     mode = args.mode.split(",")
