@@ -78,3 +78,4 @@ Mixed timelines contain a mix of human and machine generated tweets. To generate
 - We first sample `N-K` human generated tweets from `DATASET` (conditioned on same user if that info is available)
 - Then concetanate them with a sample of `K` machine generated tweets from an NLG `NLG_NAME` trained on `DATASET`. Note human generated tweets are alwways before machine generated tweets.
 
+For full dataset details see: [dataset.md](dataset.md)
