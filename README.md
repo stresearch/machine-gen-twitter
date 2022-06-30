@@ -74,5 +74,7 @@ In a pure timeline, all tweets are either machine generated or human generated. 
 
 ### Mixed Timelines
 
-Mixed timelines contain a mix of human and machine generated tweets. To generate a timeline of lenght `N` with `K` machine generated tweets. We first sample `N-K` human generated tweets from `DATASET` (conditioned on same user if that info is available) and then concetanate them with a sample of `K` machine generated tweets from an NLG `NLG_NAME` trained on `DATASET`. Note human generated tweets are alwways before machine generated tweets.
+Mixed timelines contain a mix of human and machine generated tweets. To generate a timeline of lenght `N` with `K` machine generated tweets. 
+- We first sample `N-K` human generated tweets from `DATASET` (conditioned on same user if that info is available)
+- Then concetanate them with a sample of `K` machine generated tweets from an NLG `NLG_NAME` trained on `DATASET`. Note human generated tweets are alwways before machine generated tweets.
 
