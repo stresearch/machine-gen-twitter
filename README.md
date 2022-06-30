@@ -59,7 +59,7 @@ optional arguments:
 
 ```
 
-We concatenate all tweet text with `EOS_TOKEN` and split it into chunks of max_lenght of 72 with  overlap of 4 tokens. We use effective size of 32 and train for 5 epochs with learning rate of 5e-5 optimzing the causal language model objective i.e. next word prediciton. We keep the model with best loss on the validation set.
+We concatenate all tweet text with `EOS_TOKEN` and split it into chunks of max_lenght of 72 with  overlap of 4 tokens. We use effective size of 32 and train for 5 epochs with learning rate of 5e-5 optimzing the causal language model objective i.e. next word prediciton. We keep the model with best loss on the validation set. For large models, you may need a large GPU or use model parallelism strategies like `deepspeed_2` or 3
 
 ## Generate and Construct Timelines
 
