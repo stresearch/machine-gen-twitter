@@ -61,4 +61,18 @@ optional arguments:
 
 We concatenate all tweet text with `EOS_TOKEN` and split it into chunks of max_lenght of 72 with  overlap of 4 tokens. We use effective size of 32 and train for 5 epochs with learning rate of 5e-5 optimzing the causal language model objective i.e. next word prediciton. We keep the model with best loss on the validation set.
 
-## Generate and construct timelines
+## Generate and Construct Timelines
+
+We construct two types of data. Pure timelines and mixed timelines. A timeline is a sequence of tweets.
+
+### Pure Timelines
+
+In a pure timeline, all tweets are either machine generated or human generated. To generate a timeline of N tweets:
+- Machine generated: generate N tweets using an NLG `NLG_NAME` trained on `DATASET`:  
+`python train_deepspeed.py --mode generate --num_samples N --lm_name NLG_NAME --dataset DATASET` 
+- Human generated: sample N tweets from dataset. For COVID dataset, we have enough tweets per user, so we first sample user `USER` and then sample `N` tweets from `USER`'s tweets.
+
+### Mixed Timelines
+
+Mixed timelines contain a mix of human and machine generated tweets. To generate a timeline of lenght `N` with `K` machine generated tweets. We first sample `N-K` human generated tweets from `DATASET` (conditioned on same user if that info is available) and then concetanate them with a sample of `K` machine generated tweets from an NLG `NLG_NAME` trained on `DATASET`. Note human generated tweets are alwways before machine generated tweets.
+
