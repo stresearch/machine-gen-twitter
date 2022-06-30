@@ -1,4 +1,4 @@
-# Instructions for Constructing a Dataset of Social Media Machine Generated Text 
+# Instructions for Constructing Dataset of Social Media Machine Generated Text 
 
 This project contains code for constructing a dataset for development and evaluation of forensic tools for detecting machine generated text in social media.
 
@@ -11,14 +11,14 @@ There are 4 steps:
 
 We source data from 3 english language Twitter datasets on 3 different topics:
 - Vaccine: mostly anti-vax discussion around vaccines from https://github.com/gmuric/avax-tweets-dataset
-- COVID: general covid dicussion from around the world from [TBD]. This dataset was specifically constructed to have a significant number of users with more than 1 tweets. As per Twitter terms of service only tweet ids are provided.
+- COVID: general covid dicussion from around the world from `datasets/covid_ids.csv`. This dataset was specifically constructed to have a significant number of users with more than 1 tweets. As per Twitter terms of service only tweet ids are provided.
 - Climate: general climate change discussion https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/5QCCUU
 
 To rehydrate a tweet bodies from tweet_ids use `rehydrate` function in `utils.py`. Twitter. The output is saved as `.jsonl`; each row is a tweet. We keep 100k samples from each dataset
 
 ## Fine-tune NLG Models
 
-The next step is to fine several NLG models. 
+The next step is to finetune several NLG models. 
 ### Preprocess data for training
 
 We preprocess each dataset by:
