@@ -124,3 +124,7 @@ lightning_logs/*
 *.txt
 *.html
 *.03
+
+
+# keep
+!datasets/covid_ids.csv
