@@ -129,4 +129,4 @@ output/*
 misc/*
 
 # keep
-!datasets/covid_ids.csv
+!datasets/covid_ids*
