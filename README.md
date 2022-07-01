@@ -17,7 +17,18 @@ We source data from 3 english language Twitter datasets on 3 different topics:
 - COVID: general covid dicussion from around the world from `datasets/covid_ids.csv`. This dataset was specifically constructed to have a significant number of users with more than 1 tweets. As per Twitter terms of service only tweet ids are provided.
 - Climate: general climate change discussion https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/5QCCUU
 
-To rehydrate a tweet bodies from tweet_ids use `rehydrate` function in `utils.py`. Twitter. The output is saved as `.jsonl`; each row is a tweet. We keep 100k samples from each dataset
+Convert each source file of tweet ids to a csv with a single `id` column:
+```yaml
+id
+1372199058945757184
+1371797650098503680
+1371465465692835840
+1371013740573946112
+1370348099491794944
+1370130417471385600
+```
+
+To rehydrate tweet bodies from tweet_ids use `rehydrate` function in `utils.py`. Twitter. The output is saved as `.jsonl`; each row is a tweet. You'll need valid Twitter credentials. We keep 100k samples from each dataset.
 
 ## Fine-tune NLG Models
 
