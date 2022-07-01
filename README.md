@@ -1,6 +1,8 @@
 # Instructions for Constructing Dataset of Social Media Machine Generated Text 
 
-This project contains code for constructing a dataset for development and evaluation of forensic tools for detecting machine generated text in social media.
+This project contains instruction and code for constructing a dataset for development and evaluation of forensic tools for detecting machine generated text in social media. 
+- **We are not releasing full twitter data to comply with Twitter terms of service.**
+- **We are also not releasing generators and machine generated data for ethical reasons.**
 
 There are 4 steps:
 1. Rehydrate source data from tweet ids
