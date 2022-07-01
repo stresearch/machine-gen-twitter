@@ -1,10 +1,11 @@
 # Instructions for Constructing Dataset of Social Media Machine Generated Text 
 
-This project contains instruction and code for constructing a dataset for development and evaluation of forensic tools for detecting machine generated text in social media. 
+This project contains instruction and code to reconstruct a dataset for development and evaluation of forensic tools for detecting machine generated text in social media. 
 - **We are not releasing full twitter data to comply with Twitter terms of service.**
 - **We are also not releasing generators and machine generated data for ethical reasons.**
 
-There are 4 steps:
+
+There are 3 main steps:
 1. Rehydrate source data from tweet ids
 2. Fine-tune natural language generation (NLG) models
 3. Generate machine generated text from NLG models and construct human, machine and mixed timelines of tweets
