@@ -39,7 +39,7 @@ We preprocess each dataset by:
 - Cleaning up tweet formatting
 - Droppping `RT` and `@mentions` for retweets
 - Dropping duplicates
-- Dropping boring tweets i.e. tweets with less than 5 non-trivial (borrowed from [huggingtweets](https://github.com/borisdayma/huggingtweets))
+- Dropping boring tweets i.e. tweets with less than 5 non-trivial words (i.e. boring word begins with either `http`, `#` or `@` ; borrowed from [huggingtweets](https://github.com/borisdayma/huggingtweets))
 
 We split the clean data it into train and validation sets (95%/5%) to monitor model training for early stopping. 
 
